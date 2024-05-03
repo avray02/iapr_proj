@@ -1,7 +1,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 
-def plot_images(images, coins=[], est_coins=[], n_cols=1, x_size=3, y_size=3, cmap='gray'):  
+def plot_images(images, coins=[], est_coins=[], n_cols=-1, x_size=3, y_size=3, cmap='gray'):  
     estimation = False
     legend = False
 
@@ -20,6 +20,9 @@ def plot_images(images, coins=[], est_coins=[], n_cols=1, x_size=3, y_size=3, cm
         if len(images) != len(est_coins):
             raise ValueError('images and est_coins must have the same length')
         estimation = True
+
+    if n_cols == -1:
+        n_cols = np.min([len(images), 6])
 
     labels = ['5CHF', '2CHF', '1CHF', '0.5CHF', '0.2CHF', '0.1CHF', '0.05CHF',
        '2EUR', '1EUR', '0.5EUR', '0.2EUR', '0.1EUR', '0.05EUR', '0.02EUR',
