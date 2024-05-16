@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import cv2
 
-def plot_images(images, coins=[], est_coins=[], coins_coord=[], n_cols=-1, x_size=3, y_size=3, ratio=1, cmap='gray'):  
+def plot_images(images, coins=[], est_coins=[], coins_coord=[], types=[], n_cols=-1, x_size=3, y_size=3, ratio=1, cmap='gray'):  
     # images = images.copy()
     # coins = coins.copy()
     # est_coins = est_coins.copy()
@@ -11,6 +11,7 @@ def plot_images(images, coins=[], est_coins=[], coins_coord=[], n_cols=-1, x_siz
     estimation = False
     legend = False
     localization = False
+    title = False
 
     # Sanity check
     if len(images) == 0:
@@ -32,6 +33,11 @@ def plot_images(images, coins=[], est_coins=[], coins_coord=[], n_cols=-1, x_siz
         if len(images) != len(coins_coord):
             raise ValueError('images and coins_coord must have the same length')
         localization = True
+
+    if len(types) > 0:
+        if len(images) != len(types):
+            raise ValueError('images and types must have the same length')
+        title = True
 
     if n_cols == -1:
         n_cols = np.min([len(images), 6])
@@ -71,34 +77,41 @@ def plot_images(images, coins=[], est_coins=[], coins_coord=[], n_cols=-1, x_siz
                 circle = plt.Circle(center, radius, color='r', fill=False)  # Create a circle object
                 ax.add_artist(circle)  # Add the circle to the plot
 
-        if not legend:
-            continue
-
-        error = False
-        text = ''
-        for j in range(len(labels)):
-            if estimation and ((coins[i][j] != 0 or est_coins[i][j] != 0) and est_coins[i][j] != coins[i][j]):  
-                error = True
-                text += f'({est_coins[i][j]}){coins[i][j]}x{labels[j]}\n' 
-            elif coins[i][j] != 0:
-                text += f'{coins[i][j]}x{labels[j]}\n'       
+        if legend:
+            error = False
+            text = ''
+            for j in range(len(labels)):
+                if estimation and ((coins[i][j] != 0 or est_coins[i][j] != 0) and est_coins[i][j] != coins[i][j]):  
+                    error = True
+                    text += f'({est_coins[i][j]}){coins[i][j]}x{labels[j]}\n' 
+                elif coins[i][j] != 0:
+                    text += f'{coins[i][j]}x{labels[j]}\n'       
 
 
-        ax.text(0, 0, text, color='white', fontsize=10, va='top', ha='left', bbox=dict(facecolor='black', alpha=0.2))
+            ax.text(0, 0, text, color='white', fontsize=10, va='top', ha='left', bbox=dict(facecolor='black', alpha=0.2))
+
+        if title:
+            ax.set_title(f'Type: {types[i]}')
 
     plt.show()
 
-def plot_coins(image, coins, labels=[], x_size=3, y_size=3):
-    legend = False
+def plot_coins(coins, labels=[], predicted_labels=[], x_size=3, y_size=3):
+    title = False
+    prediction = False
 
     label_list = ['5CHF', '2CHF', '1CHF', '0.5CHF', '0.2CHF', '0.1CHF', '0.05CHF',
        '2EUR', '1EUR', '0.5EUR', '0.2EUR', '0.1EUR', '0.05EUR', '0.02EUR',
        '0.01EUR', 'OOD']
 
     if len(labels) > 0:
-        if len(labels) != len(label_list):
+        if len(labels) != len(coins):
             raise ValueError('coins and labels must have the same length') 
-        legend = True
+        title = True
+
+        if len(predicted_labels) > 0:
+            if len(predicted_labels) != len(coins):
+                raise ValueError('coins and predicted_labels must have the same length') 
+            prediction = True
 
     
 
@@ -124,12 +137,15 @@ def plot_coins(image, coins, labels=[], x_size=3, y_size=3):
         ax.imshow(coins[i], cmap='gray')
         ax.axis('off')
 
-    if legend:
-        text = ''
-        for j in range(len(labels)):
-            if labels[j] != 0:
-                text += f'{labels[j]}x{label_list[j]}\n' 
-        ax.text(0, 0, text, color='white', fontsize=10, va='top', ha='left', bbox=dict(facecolor='black', alpha=0.2))
+        if title:
+            if prediction:
+                if labels[i] == predicted_labels[i]:
+                    ax.set_title(f'{label_list[labels[i]]}', color='green')
+                else:
+                    ax.set_title(f'{label_list[predicted_labels[i]]} ({label_list[labels[i]]})', color='red')
+            else:
+                ax.set_title(f'{label_list[labels[i]]}')
+        
 
         
 

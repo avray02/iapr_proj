@@ -29,54 +29,130 @@ def remove_overlapping_circles(circles, epsilon=1e-6):
     # Return non-overlapping circles
     return circles[mask]
 
-def localize_coins(img):
-    N,M = img.shape[:2]
-    ratio = 10
-    img = cv2.resize(img, (int(M/ratio), int(N/ratio))).copy()
+def classify_background(img):
+    img = cv2.resize(img, (600, 400)).copy()
 
     mean_color = img.mean(axis=(0,1))
     gr_red_ratio = mean_color[1]/mean_color[0]
-
-    red = img[:,:,0].astype(np.float32)
-    green = img[:,:,1].astype(np.float32)
-    blue = img[:,:,2].astype(np.float32)
-
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-    hue = hsv_img[:,:,0].astype(np.float32)
-    saturation = hsv_img[:,:,1].astype(np.float32)
-    saturation_th, _= cv2.threshold(saturation.astype(np.uint8), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    value = hsv_img[:,:,2].astype(np.float32)
-
     if gr_red_ratio>1:
-        img_type = 1
-
-        tmp = (saturation-hue).clip(0,255).astype(np.uint8)
-
-        circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=1,param2=0.49,minRadius=5,maxRadius=50)
-
+         return 1#"Textured"
     elif gr_red_ratio<0.94:
-        img_type = 2      
+        return 2#"Hand"
+    else:
+        return 0#"Plain"
+    
+def localize_coins(images):
+    tmp_images = []
+    types_list = []
+    circles_list = []
+
+    for i, image in enumerate(images):
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        hue, saturation, value = cv2.split(hsv_image)
+
+        type = classify_background(image)
+        types_list.append(type)
+
+        if type == 0 or type == "Plain":
+            # Pre-process with Gaussian Blur
+            tmp = cv2.GaussianBlur(saturation, (9, 9), 2)
+
+            circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=100,param2=0.78,minRadius=15,maxRadius=50)
+
+        elif type == 1 or type == "Textured":
+            # Apply CLAHE
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            tmp = (saturation.astype(np.float32)-hue.astype(np.float32)).clip(0,255).astype(np.uint8)
+            tmp = clahe.apply(tmp)
+
+            # Pre-process with Gaussian Blur
+            tmp = cv2.GaussianBlur(tmp, (3, 3), 2)
+
+            circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=100,param2=0.8,minRadius=15,maxRadius=50)
+
+        else: # Hand background        
+            # Threshold the HSV image to get only skin colors
+            skin_mask = ((image[:,:,0].astype(np.float32)-image[:,:,1].astype(np.float32))>20).astype(np.uint8)
+            
+            # Apply morphological operations to clean up the mask
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (21, 21))
+            skin_mask = cv2.dilate(skin_mask, kernel, iterations = 5)
+            skin_mask = cv2.erode(skin_mask, kernel, iterations = 5)     
+            
+            # Bitwise-AND mask and original image
+            hue = cv2.bitwise_and(hue, hue, mask=skin_mask)
+
+            mask2 = (hue>3) & (hue<110)
+            tmp = cv2.bitwise_and(hue, hue, mask=mask2.astype(np.uint8))
+
+            # Apply CLAHE on masked saturation channel
+            clahe = cv2.createCLAHE(clipLimit=10.0, tileGridSize=(50, 50))
+            tmp= clahe.apply(tmp)
+
+            # Pre-process with Gaussian Blur
+            tmp = cv2.GaussianBlur(tmp, (3, 3), 2)
+
+            circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=400,param2=0.7,minRadius=15,maxRadius=50)
+
+            
+        tmp_images.append(tmp)
+        if circles_tmp is not None:
+                circles = remove_overlapping_circles(circles_tmp[0], epsilon=10)
+        else:
+            circles = []
+        circles_list.append(circles)
+
+    return circles_list, types_list, tmp_images
+
+
+# def localize_coins(img):
+#     N,M = img.shape[:2]
+#     ratio = 10
+#     img = cv2.resize(img, (int(M/ratio), int(N/ratio))).copy()
+
+#     mean_color = img.mean(axis=(0,1))
+#     gr_red_ratio = mean_color[1]/mean_color[0]
+
+#     red = img[:,:,0].astype(np.float32)
+#     green = img[:,:,1].astype(np.float32)
+#     blue = img[:,:,2].astype(np.float32)
+
+#     hsv_img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+#     hue = hsv_img[:,:,0].astype(np.float32)
+#     saturation = hsv_img[:,:,1].astype(np.float32)
+#     saturation_th, _= cv2.threshold(saturation.astype(np.uint8), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+#     value = hsv_img[:,:,2].astype(np.float32)
+
+#     if gr_red_ratio>1:
+#         img_type = 1
+
+#         tmp = (saturation-hue).clip(0,255).astype(np.uint8)
+
+#         circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=1,param2=0.49,minRadius=5,maxRadius=50)
+
+#     elif gr_red_ratio<0.94:
+#         img_type = 2      
         
-        hand = (red-green)>20 #((hue>130)|(hue<10)).astype(np.uint8)*255 #(hue<10) | (hue>30)
-        hand = skimage.morphology.closing(hand, footprint=skimage.morphology.disk(radius=15))
-        hand = skimage.morphology.remove_small_holes(hand,area_threshold=20000)
+#         hand = (red-green)>20 #((hue>130)|(hue<10)).astype(np.uint8)*255 #(hue<10) | (hue>30)
+#         hand = skimage.morphology.closing(hand, footprint=skimage.morphology.disk(radius=15))
+#         hand = skimage.morphology.remove_small_holes(hand,area_threshold=20000)
 
-        tmp = hand & (hue>10) & (hue<130)
-        tmp = skimage.morphology.remove_small_holes(tmp,area_threshold=1000)
-        tmp = skimage.morphology.erosion(tmp, footprint=skimage.morphology.disk(radius=3))
-        tmp = skimage.morphology.opening(tmp, footprint=skimage.morphology.disk(radius=3))      
+#         tmp = hand & (hue>10) & (hue<130)
+#         tmp = skimage.morphology.remove_small_holes(tmp,area_threshold=1000)
+#         tmp = skimage.morphology.erosion(tmp, footprint=skimage.morphology.disk(radius=3))
+#         tmp = skimage.morphology.opening(tmp, footprint=skimage.morphology.disk(radius=3))      
 
-        tmp = tmp.astype(np.uint8)     
+#         tmp = tmp.astype(np.uint8)     
 
-        circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=1,param2=0.58,minRadius=15,maxRadius=50)
-    else:
-        img_type = 0
-        tmp = saturation.astype(np.uint8)
-        circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=1,param2=0.4,minRadius=5,maxRadius=50)
+#         circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=1,param2=0.58,minRadius=15,maxRadius=50)
+#     else:
+#         img_type = 0
+#         tmp = saturation.astype(np.uint8)
+#         circles_tmp = cv2.HoughCircles(tmp,cv2.HOUGH_GRADIENT_ALT,1.5,20, param1=1,param2=0.4,minRadius=5,maxRadius=50)
 
-    if circles_tmp is not None:
-        circles = remove_overlapping_circles(circles_tmp[0], epsilon=0)
-    else:
-        circles = []
+#     if circles_tmp is not None:
+#         circles = remove_overlapping_circles(circles_tmp[0], epsilon=0)
+#     else:
+#         circles = []
 
-    return circles*ratio#, img_type
+#     return circles*ratio#, img_type
