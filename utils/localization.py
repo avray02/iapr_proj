@@ -99,10 +99,39 @@ def localize_coins(images):
         if circles_tmp is not None:
                 circles = remove_overlapping_circles(circles_tmp[0], epsilon=10)
         else:
-            circles = []
+            circles = np.array([])
         circles_list.append(circles)
 
     return circles_list, types_list, tmp_images
+
+def extract_coins(images):
+    resized_images = [cv2.resize(img, (600,400)) for img in images]
+    coins_coord,_,_ = localize_coins(resized_images)
+    coins_coord = [coin_coord.astype(np.int32)*10 for coin_coord in coins_coord]
+    coins = []
+    masks = []
+
+    N,M = images[0].shape[:2]
+
+    for i in range(len(images)):
+        coins_i = []
+        mask_i = []
+        img = images[i]
+        centers = coins_coord[i]
+        for x_,y_,r in centers:
+            x_ = int(x_)
+            y_ = int(y_)
+            x = min(M-400,max(400, x_))
+            y = min(N-400,max(400, y_))
+            coin = img[y-400:y+400, x-400:x+400]
+            coin_mask = np.zeros((800,800))
+            cv2.circle(coin_mask, (400+x-x_,400+y-y_), int(1.1*r), 1, -1)
+                
+            coins_i.append(coin)
+            mask_i.append(coin_mask)
+        coins.append(coins_i)
+        masks.append(mask_i)
+    return coins,masks,coins_coord
 
 
 # def localize_coins(img):

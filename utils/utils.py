@@ -3,10 +3,15 @@ import cv2
 import numpy as np
 import random
 
-def load_images_from_folder(folder, max_images=-1, resize=True):
+def load_images_from_folder(folder, max_images=-1, batch_idx=0, resize=True):
     images = []
+    cnt = 0
+
     for root, _, filenames in sorted(os.walk(folder)):
         for filename in sorted(filenames):
+            if cnt < batch_idx:
+                cnt += 1
+                continue
             if max_images == -1 or len(images) < max_images:
                 img = cv2.imread(os.path.join(root, filename))
                 if img is not None:

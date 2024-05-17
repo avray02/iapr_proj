@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import cv2
 
-def plot_images(images, coins=[], est_coins=[], coins_coord=[], types=[], n_cols=-1, x_size=3, y_size=3, ratio=1, cmap='gray'):  
+def plot_images(images, coins=[], est_coins=[], coins_coord=[], types=[], n_cols=-1, x_size=4, y_size=3, ratio=1, cmap='gray'):  
     # images = images.copy()
     # coins = coins.copy()
     # est_coins = est_coins.copy()
@@ -145,6 +145,8 @@ def plot_coins(coins, labels=[], predicted_labels=[], x_size=3, y_size=3):
                         ax.set_title(f'{label_list[labels[i]]}', color='green')
                     else:
                         ax.set_title(f'{label_list[predicted_labels[i]]} ({label_list[labels[i]]})', color='red')
+                else:
+                    ax.set_title(f'{label_list[labels[i]]}')
             else:
                 if prediction:
                     if labels[i] == predicted_labels[i]:

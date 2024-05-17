@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 class CoinDataset(Dataset):
-    def __init__(self, images, labels, masks, is_validation=True, augment=False):
+    def __init__(self, images, masks, labels=None, is_validation=True, augment=False):
         """
         Args:
             images (list): List of all images.
@@ -15,7 +15,11 @@ class CoinDataset(Dataset):
             transform (callable, optional): Optional transform to be applied on a sample.
         """
         self.images = images
+        # if labels is None:
+        #     self.labels = [0 for _ in range(len(images))]
+        # else:
         self.labels = labels
+
         self.masks = masks
         self.is_validation = is_validation
         self.augment = augment
