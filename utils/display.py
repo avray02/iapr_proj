@@ -107,6 +107,7 @@ def plot_coins(coins, labels=[], predicted_labels=[], x_size=3, y_size=3):
         if len(labels) != len(coins):
             raise ValueError('coins and labels must have the same length') 
         title = True
+        label_type = type(labels[0])
 
         if len(predicted_labels) > 0:
             if len(predicted_labels) != len(coins):
@@ -138,14 +139,23 @@ def plot_coins(coins, labels=[], predicted_labels=[], x_size=3, y_size=3):
         ax.axis('off')
 
         if title:
-            if prediction:
-                if labels[i] == predicted_labels[i]:
-                    ax.set_title(f'{label_list[labels[i]]}', color='green')
-                else:
-                    ax.set_title(f'{label_list[predicted_labels[i]]} ({label_list[labels[i]]})', color='red')
+            if label_type == int:
+                if prediction:
+                    if labels[i] == predicted_labels[i]:
+                        ax.set_title(f'{label_list[labels[i]]}', color='green')
+                    else:
+                        ax.set_title(f'{label_list[predicted_labels[i]]} ({label_list[labels[i]]})', color='red')
             else:
-                ax.set_title(f'{label_list[labels[i]]}')
+                if prediction:
+                    if labels[i] == predicted_labels[i]:
+                        ax.set_title(f'{labels[i]}', color='green')
+                    else:
+                        ax.set_title(f'{predicted_labels[i]} ({labels[i]})', color='red')
+                else:
+                    ax.set_title(f'{labels[i]}')
         
+
+
 
         
 
