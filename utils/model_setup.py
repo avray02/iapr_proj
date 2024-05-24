@@ -58,7 +58,7 @@ class CoinDataset(Dataset):
         image = self.images[idx]
         mask = self.masks[idx]
         label = self.labels[idx]
-
+        
         if not self.is_validation and self.augment:
             # Generate random transformation parameters
             angle = 30
