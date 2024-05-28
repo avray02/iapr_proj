@@ -25,8 +25,8 @@ class CoinDataset(Dataset):
         self.augment = augment
 
         self.normalize = transforms.Normalize(
-                        mean=[0.4914, 0.4822, 0.4465],
-                        std=[0.2023, 0.1994, 0.2010],
+                        mean=[186.56360392, 171.46413211, 144.73335904],#[0.4914, 0.4822, 0.4465],#
+                        std=[26.83046842, 27.42081317, 44.70402812],#[0.2023, 0.1994, 0.2010],#
                     )
 
         self.resize = transforms.Resize((400, 400))
@@ -34,8 +34,7 @@ class CoinDataset(Dataset):
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
             self.resize,
-            transforms.ToTensor(),
-            self.normalize])
+            transforms.ToTensor()])
         
         self.mask_transform = transforms.Compose([
             transforms.ToPILImage(),
@@ -74,8 +73,7 @@ class CoinDataset(Dataset):
                 # transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5)], p=0.3), # Random color changes
                 transforms.ToTensor(),
                 # transforms.Lambda(self.add_noise),  # Add noise to the image
-                self.normalize
-            ])
+                ])
 
             mask_transform = transforms.Compose([
                 transforms.ToPILImage(),
