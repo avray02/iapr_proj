@@ -1,5 +1,6 @@
 import random
 import cv2
+import numpy as np
 import matplotlib.pyplot as plt
 
 import torch
@@ -24,22 +25,20 @@ class CoinDataset(Dataset):
         self.is_validation = is_validation
         self.augment = augment
 
-        self.normalize = transforms.Normalize(
-                        mean=[0.4914, 0.4822, 0.4465],#[186.56360392/255, 171.46413211/255, 144.73335904/255],#
-                        std=[0.2023, 0.1994, 0.2010],# [26.83046842/255, 27.42081317/255, 44.70402812/255],#
-                    )
+        # self.normalize = transforms.Normalize(
+        #                 mean=[190.86785941, 155.85604755, 103.75844338], #[186.56360392, 171.46413211, 144.73335904],#[0.4914, 0.4822, 0.4465],#
+        #                 std=[21.85737926, 22.68003826, 31.77628202] #[26.83046842, 27.42081317, 44.70402812],#[0.2023, 0.1994, 0.2010],# 
+        #             )
+        self.mean=np.array([190.87, 155.86, 103.76], dtype=np.float32)
+        self.std=np.array([21.86, 22.68, 31.78], dtype=np.float32)
 
-        self.resize = transforms.Resize((400, 400))
+        self.resize_dim = (400, 400)
 
         self.transform = transforms.Compose([
-            transforms.ToPILImage(),
-            self.resize,
-            transforms.ToTensor(),
-            self.normalize])
+            transforms.ToTensor()])
+            # self.normalize])
         
         self.mask_transform = transforms.Compose([
-            transforms.ToPILImage(),
-            self.resize,
             transforms.ToTensor()
         ])
             
@@ -50,6 +49,17 @@ class CoinDataset(Dataset):
             noisy_img = torch.clamp(noisy_img, 0, 255)  # Ensure pixel values stay in [0, 1]
             return noisy_img
         return img
+    
+    def resize(self, image, mask):
+        resized_image = cv2.resize(image, self.resize_dim, interpolation=cv2.INTER_LINEAR)
+        resized_mask = cv2.resize(mask.astype(np.uint8), self.resize_dim, interpolation=cv2.INTER_NEAREST)
+        return resized_image, resized_mask.astype(bool)
+    
+    def normalize(self, img):
+        img = img.astype(np.float32)
+        img = img-self.mean
+        img = img/self.std
+        return img
 
     def __len__(self):
         return len(self.images)
@@ -58,30 +68,34 @@ class CoinDataset(Dataset):
         image = self.images[idx]
         mask = self.masks[idx]
         label = self.labels[idx]
+
+        image = self.normalize(image)
+        image, mask = self.resize(image, mask)
+        
+
+        
         
         if not self.is_validation and self.augment:
             # Generate random transformation parameters
-            angle = 30
+            angle = 180
             translate = (0.05,0.05)
 
             transform_params = transforms.RandomAffine(degrees=(-angle,angle), translate=translate)
             
             transform = transforms.Compose([
-                transforms.ToPILImage(),
-                self.resize,
+                transforms.ToTensor(),
                 transform_params,
                 # transforms.RandomApply([transforms.GaussianBlur(5, sigma=(0.1, 2))], p=0.2),  # Gaussian blur
                 # transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5)], p=0.3), # Random color changes
-                transforms.ToTensor(),
+                
                 # transforms.Lambda(self.add_noise),  # Add noise to the image
-                self.normalize
+                # self.normalize
                 ])
 
             mask_transform = transforms.Compose([
-                transforms.ToPILImage(),
-                self.resize,
+                transforms.ToTensor(),
                 transform_params,
-                transforms.ToTensor()
+                
             ])
 
             image = transform(image)
@@ -92,6 +106,7 @@ class CoinDataset(Dataset):
             mask = self.mask_transform(mask)
         
         image = image * mask
+        # print(image.mean())
 
         return image, torch.tensor(label, dtype=torch.long)
     
