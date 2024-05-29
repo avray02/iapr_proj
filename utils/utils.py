@@ -2,6 +2,9 @@ import os
 import cv2
 import numpy as np
 import random
+import nbformat
+from nbconvert import PythonExporter
+from IPython import get_ipython
 
 def load_images_from_folder(folder, max_images=-1, batch_idx=0, resize=True):
     images = []
@@ -84,3 +87,13 @@ def train_test_split(images,labels,masks=None,seed=-1,ratio=0.8):
         return train_images, test_images, train_labels, test_labels, train_masks, test_masks
     
     return train_images, test_images, train_labels, test_labels
+
+def run_notebook(path):
+    with open(path) as f:
+        nb = nbformat.read(f, as_version=4)
+    
+    exporter = PythonExporter()
+    code, _ = exporter.from_notebook_node(nb)
+    
+    ip = get_ipython()
+    ip.run_cell(code)

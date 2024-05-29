@@ -7,3 +7,4 @@ tqdm
 scikit-learn
 scikit-image
 opencv-python
+nbconvert
